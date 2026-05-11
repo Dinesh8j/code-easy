@@ -1,9 +1,3 @@
-"""
-ui/generator.py
-───────────────
-Streamlit UI for the 🛠 Code Generator tab.
-"""
-
 import json
 import streamlit as st
 
