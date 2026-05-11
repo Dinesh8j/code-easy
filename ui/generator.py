@@ -38,11 +38,11 @@ def render():
         st.markdown("---")
         root_class = st.text_input(
             "Root class name *", value="",
-            placeholder="e.g. MyRequest  (required)"
+            placeholder="e.g. SimilarityCreateRequest  (required)"
         )
         package_name = (
             st.text_input("Package name (optional)", value="",
-                          placeholder="e.g. com.example.myapp")
+                          placeholder="e.g. com.zoho.feature")
             if lang == "Scala" else ""
         )
 
