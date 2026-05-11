@@ -1,13 +1,3 @@
-"""
-app.py
-──────
-CodeCast — entry point.
-Handles page config, session state, nav bar, and delegates each tab
-to its dedicated ui/ module.
-
-Run with:  streamlit run app.py
-"""
-
 import streamlit as st
 
 from db import init_db, use_supabase
@@ -17,36 +7,22 @@ import ui.flow       as tab_flow
 import ui.stats      as tab_stats
 import ui.feedbacks  as tab_feedbacks
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Page config  (must be first Streamlit call)
-# ─────────────────────────────────────────────────────────────────────────────
 
-st.set_page_config(page_title="CodeCast", page_icon="🎯", layout="wide")
-
-# ─────────────────────────────────────────────────────────────────────────────
-# DB init
-# ─────────────────────────────────────────────────────────────────────────────
+st.set_page_config(page_title="CodeEasy", page_icon="🎯", layout="wide")
 
 if not use_supabase():
     init_db()
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Session defaults
-# ─────────────────────────────────────────────────────────────────────────────
 
 _DEFAULTS = {"language": "Scala", "active_tab": "generator", "flow_svg": ""}
 for k, v in _DEFAULTS.items():
     if k not in st.session_state:
         st.session_state[k] = v
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Header + nav
-# ─────────────────────────────────────────────────────────────────────────────
 
 h1, h2, h3, h4, h5, h6 = st.columns([2.4, 1, 1, 1, 1, 1])
 
 with h1:
-    st.markdown("## 🎯 CodeCast")
+    st.markdown("## 🎯 CodeEasy")
     st.caption("Generate Scala case classes or Python dataclasses from any JSON sample — instantly")
 
 _tabs = [
@@ -68,10 +44,6 @@ for col, tab_id, label in zip([h2, h3, h4, h5, h6], ["generator","template","flo
 
 st.markdown("---")
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Tab routing
-# ─────────────────────────────────────────────────────────────────────────────
-
 _active = st.session_state["active_tab"]
 
 if   _active == "generator": tab_generator.render()
@@ -79,10 +51,6 @@ elif _active == "template":  tab_template.render()
 elif _active == "flow":      tab_flow.render()
 elif _active == "stats":     tab_stats.render()
 elif _active == "feedbacks": tab_feedbacks.render()
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Footer
-# ─────────────────────────────────────────────────────────────────────────────
 
 st.markdown("---")
 st.markdown("""
