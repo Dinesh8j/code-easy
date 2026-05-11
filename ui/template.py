@@ -1,9 +1,3 @@
-"""
-ui/template.py
-──────────────
-Streamlit UI for the 📄 Template Generator tab.
-"""
-
 import json
 import streamlit as st
 
