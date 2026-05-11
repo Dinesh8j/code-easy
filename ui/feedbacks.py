@@ -1,9 +1,3 @@
-"""
-ui/feedbacks.py
-───────────────
-Streamlit UI for the 💬 Feedbacks tab.
-"""
-
 import csv
 import io
 import streamlit as st
