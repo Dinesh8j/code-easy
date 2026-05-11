@@ -1,17 +1,6 @@
-"""
-core/code_generator.py
-───────────────────────
-Pure logic for generating Scala case classes and Python dataclasses from JSON.
-No Streamlit imports — fully testable in isolation.
-"""
-
 import json, re, io, zipfile
 from typing import Optional
 
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Shared helpers
-# ─────────────────────────────────────────────────────────────────────────────
 
 def to_class_name(s: str) -> str:
     return "".join(p.title() for p in s.split("_"))
@@ -54,10 +43,6 @@ def build_zip(files: list[dict], root_name: str) -> bytes:
     return buf.getvalue()
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Type inference
-# ─────────────────────────────────────────────────────────────────────────────
-
 def infer_scala_type(v) -> str:
     if isinstance(v, bool):  return "Boolean"
     if isinstance(v, int):   return "Long" if abs(v) > 2_147_483_647 else "Int"
@@ -78,9 +63,6 @@ def infer_python_type(v) -> str:
     return "str"
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Scala generation
-# ─────────────────────────────────────────────────────────────────────────────
 
 def _scala_default_expr(ft: str, raw_val: str) -> str:
     raw = raw_val.strip()
@@ -193,10 +175,6 @@ def generate_scala(raw: str, root: str, pkg: str, extra_enums: dict,
         files.append(_scala_case_class(cn, fields, nm, pkg, enum_reg, option_fields, defaults))
     return files
 
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Python generation
-# ─────────────────────────────────────────────────────────────────────────────
 
 def _python_default_expr(ft: str, raw_val: str) -> str:
     raw = raw_val.strip()
