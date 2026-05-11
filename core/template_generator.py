@@ -1,10 +1,3 @@
-"""
-core/template_generator.py
-───────────────────────────
-Generates security.xml <jsontemplate> blocks from a JSON sample.
-No Streamlit imports — fully testable in isolation.
-"""
-
 import json, re
 
 
