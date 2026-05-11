@@ -58,10 +58,6 @@ COLORS = {
     "no_end":   ("#ef4444", "#ffffff"),
 }
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Data model
-# ─────────────────────────────────────────────────────────────────────────────
-
 _uid = 0
 def _nid():
     global _uid; _uid += 1; return f"n{_uid}"
@@ -227,10 +223,6 @@ def parse(text: str) -> tuple[list[Node], list[Edge]]:
     return nodes, edges
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Layout
-# ─────────────────────────────────────────────────────────────────────────────
-
 _COL_X = {"main": CX_MAIN, "yes": CX_YES, "no": CX_NO}
 
 def layout(nodes: list[Node], edges: list[Edge]) -> float:
@@ -255,10 +247,6 @@ def layout(nodes: list[Node], edges: list[Edge]) -> float:
 
     return max(cursors.values())
 
-
-# ─────────────────────────────────────────────────────────────────────────────
-# SVG rendering
-# ─────────────────────────────────────────────────────────────────────────────
 
 def _wrap(text: str, max_chars: int = 24) -> list[str]:
     return textwrap.wrap(str(text), max_chars) or [str(text)]
@@ -378,11 +366,6 @@ def generate_flow_svg(prompt_text: str) -> tuple[str, str]:
     except Exception as e:
         import traceback
         return "", f"Diagram error: {e}\n{traceback.format_exc()}"
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Sidebar legend
-# ─────────────────────────────────────────────────────────────────────────────
 
 def legend_svg() -> str:
     items = [
