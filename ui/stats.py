@@ -1,9 +1,3 @@
-"""
-ui/stats.py
-───────────
-Streamlit UI for the 📊 Stats tab.
-"""
-
 import streamlit as st
 from db import get_stats, get_tpl_stats, get_flow_stats, use_supabase
 
