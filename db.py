@@ -1,10 +1,3 @@
-"""
-db.py
-─────
-All database operations for CodeCast.
-Auto-detects Supabase (cloud) vs SQLite (local) via st.secrets.
-"""
-
 import os, sqlite3
 from datetime import datetime, date
 import streamlit as st
@@ -322,6 +315,11 @@ def log_flow_generate():
         con = _conn()
         con.execute("INSERT INTO flow_stats (event,created_at) VALUES (?,?)", ("flow_generate", now))
         con.commit(); con.close()
+
+
+def get_feedback_passcode() -> str:
+    try:    return st.secrets["FEEDBACK_PASSCODE"]
+    except: return os.environ.get("FEEDBACK_PASSCODE", "life@30")
 
 
 def get_flow_stats() -> dict:
