@@ -10,22 +10,20 @@ from core.flow_diagram import generate_flow_svg, legend_svg
 from db import log_flow_generate
 
 SAMPLE_FLOW = """\
-start: Receive API request
-if: Auth token present?
-yes: Validate token signature
-  if: Token valid?
-  yes: Parse request body
-    if: Body valid?
-    yes: Process business logic
-    yes: Save result to DB
-    yes_end: Return 200 OK
-    no_end: Return 400 Bad Request
-  endif
-  no_end: Return 403 Forbidden
+start: API lands in CrmIntelligence
+step: Check config_id in DB
+if: config_id already present?
+yes_end: Send DUPLICATE_ENTRY response
+no: Create meta
+no: Publish to offload queue
+no: Consume the message
+no: Execute the query
+no: Write data to HDFS
+no: Create Python RMQ message
+no_end: Publish to Python service
 endif
-no_end: Return 401 Unauthorized
-endif
-end: Done"""
+end: Done
+"""
 
 
 
