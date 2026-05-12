@@ -5,22 +5,12 @@ from core.flow_diagram import generate_flow_svg, legend_svg
 from db import log_flow_generate
 
 SAMPLE_FLOW = """\
-start: Receive API request
-if: Auth token present?
-yes: Validate token signature
-  if: Token valid?
-  yes: Parse request body
-    if: Body valid?
-    yes: Process business logic
-    yes: Save result to DB
-    yes_end: Return 200 OK
-    no_end: Return 400 Bad Request
-  endif
-  no_end: Return 403 Forbidden
-endif
-no_end: Return 401 Unauthorized
-endif
-end: Done"""
+start: API lands in Crmintelligence
+if: config_id already present in DB?
+yes_end: Send invalid config_id response
+no: Create config_meta → Store meta in ZOS → Publish to offload queue
+step: Consume message from offload queue → Execute query → Publish message to python service
+end: Process completed"""
 
 LLM_PROMPT = """\
 You are a flow description writer. Convert the process I describe into \
