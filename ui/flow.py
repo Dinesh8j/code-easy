@@ -12,58 +12,6 @@ no: Create config_meta → Store meta in ZOS → Publish to offload queue
 step: Consume message from offload queue → Execute query → Publish message to python service
 end: Process completed"""
 
-LLM_PROMPT = """\
-You are a flow description writer. Convert the process I describe into \
-plain-text using ONLY these keywords — one per line:
- 
-  start: <label>       → entry point of the flow (green terminal)
-  step: <label>        → a process/action step (blue box)
-  if: <question>       → a yes/no decision (amber diamond)
-  yes: <label>         → action on the YES path of the last if
-  no: <label>          → action on the NO path of the last if
-  yes_end: <label>     → terminal that closes the YES path (red)
-  no_end: <label>      → terminal that closes the NO path (red)
-  endif                → rejoins both branches back to the main flow
-  end: <label>         → final terminal of the flow (red)
- 
-RULES:
-- One keyword per line — no blank lines inside a block, no bullet points, no markdown.
-- The YES path uses yes: / yes_end: lines; the NO path uses no: / no_end: lines.
-- Every if: MUST be closed with endif (even if one branch ends with yes_end/no_end).
-- Steps that happen regardless of branching go on the main flow with step:.
-- Chain sequential steps on one line using →: step: Validate → Save → Notify
-- Keep labels short (under 6 words).
- 
-Example 1 — user login:
-start: User submits login form
-if: Email exists in DB?
-yes: Validate password
-  if: Password correct?
-  yes_end: Generate JWT → Return 200 OK
-  no_end: Return 401 Invalid credentials
-endif
-no_end: Return 404 User not found
-endif
-end: Done
- 
-Example 2 — backend pipeline with duplicate check:
-start: API lands in CrmIntelligence
-step: Check config_id in DB
-if: config_id already present?
-yes_end: Send DUPLICATE_ENTRY response
-no: Create meta
-no: Publish to offload queue
-no: Consume the message
-no: Execute the query
-no: Write data to HDFS
-no: Create Python RMQ message
-no_end: Publish to Python service
-endif
-end: Done
- 
-Now write the flow for: [PASTE YOUR PROCESS DESCRIPTION HERE]"""
-
-
 def render():
     # ── Sidebar ───────────────────────────────────────────────────────────────
     with st.sidebar:
