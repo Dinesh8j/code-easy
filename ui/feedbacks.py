@@ -5,6 +5,7 @@ import streamlit as st
 from db import (
     fetch_feedbacks, update_feedback_status, delete_feedback,
     fetch_tpl_feedbacks, update_tpl_feedback_status, delete_tpl_feedback,
+    get_feedback_passcode,
 )
 
 _ICONS = {"Open": "🔴", "In Progress": "🟡", "Resolved": "🟢"}
@@ -20,6 +21,7 @@ def _feedback_section(
     lang_key: str = None,
     has_lang: bool = False,
     export_filename: str = None,
+    locked: bool = True,
 ):
     st.markdown(f"#### {title}")
 
@@ -71,11 +73,13 @@ def _feedback_section(
             st.markdown(f"**Status:** {_ICONS.get(row['status'], '⚪')} {row['status']}")
         with col_actions:
             st.markdown("**Update Status**")
-            if st.button("✅ Mark Resolved",    key=f"{record_key}_res", use_container_width=True):
+            if locked:
+                st.caption("🔒 Unlock above to enable")
+            if st.button("✅ Mark Resolved",    key=f"{record_key}_res", use_container_width=True, disabled=locked):
                 update_fn(fid, "Resolved");    st.rerun()
-            if st.button("🔄 Mark In Progress", key=f"{record_key}_wip", use_container_width=True):
+            if st.button("🔄 Mark In Progress", key=f"{record_key}_wip", use_container_width=True, disabled=locked):
                 update_fn(fid, "In Progress"); st.rerun()
-            if st.button("🗑 Delete Record",     key=f"{record_key}_del", use_container_width=True):
+            if st.button("🗑 Delete Record",     key=f"{record_key}_del", use_container_width=True, disabled=locked):
                 delete_fn(fid); st.rerun()
 
         st.markdown("**Message:**")
@@ -108,6 +112,33 @@ def render():
     st.subheader("💬 Feedbacks")
     st.markdown("---")
 
+    # ── Passcode unlock ───────────────────────────────────────────────────────
+    if "fb_unlocked" not in st.session_state:
+        st.session_state["fb_unlocked"] = False
+
+    if not st.session_state["fb_unlocked"]:
+        pc_col, btn_col = st.columns([2, 1])
+        with pc_col:
+            pc = st.text_input("🔑 Passcode to enable status actions",
+                               type="password", placeholder="Enter passcode",
+                               label_visibility="collapsed")
+        with btn_col:
+            if st.button("Unlock", use_container_width=True):
+                if pc == get_feedback_passcode():
+                    st.session_state["fb_unlocked"] = True
+                    st.rerun()
+                else:
+                    st.error("❌ Incorrect passcode.")
+        st.caption("🔒 Status update and delete buttons are disabled until unlocked.")
+    else:
+        if st.button("🔓 Lock actions"):
+            st.session_state["fb_unlocked"] = False
+            st.rerun()
+        st.caption("🔓 Status actions are enabled.")
+
+    st.markdown("---")
+    locked = not st.session_state["fb_unlocked"]
+
     _feedback_section(
         "🛠 Code Generator Feedbacks",
         fetch_fn=fetch_feedbacks,
@@ -118,6 +149,7 @@ def render():
         record_key="fb_gen_rec",
         has_lang=True,
         export_filename="codecast_feedbacks.csv",
+        locked=locked,
     )
 
     _feedback_section(
@@ -129,4 +161,5 @@ def render():
         record_key="fb_tpl_rec",
         has_lang=False,
         export_filename="codecast_tpl_feedbacks.csv",
+        locked=locked,
     )
