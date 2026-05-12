@@ -21,7 +21,6 @@ no: Execute the query
 no: Write data to HDFS
 no: Create Python RMQ message
 no_end: Publish to Python service
-endif
 end: Done
 """
 
