@@ -37,9 +37,6 @@ Nest another `if:` inside a branch freely.
 
 ---
 """)
-        st.markdown("**🤖 LLM prompt — paste into ChatGPT / Claude:**")
-        st.code(LLM_PROMPT, language="text")
-        st.markdown("---")
         st.markdown("**Shape legend:**")
         components.html(legend_svg(), height=150)
 
