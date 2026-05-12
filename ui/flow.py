@@ -1,16 +1,33 @@
+"""
+ui/flow.py
+──────────
+Streamlit UI for the 🔀 Flow Diagram tab.
+"""
+
 import streamlit as st
-import streamlit.components.v1 as components
 
 from core.flow_diagram import generate_flow_svg, legend_svg
 from db import log_flow_generate
 
 SAMPLE_FLOW = """\
-start: API lands in Crmintelligence
-if: config_id already present in DB?
-yes_end: Send invalid config_id response
-no: Create config_meta → Store meta in ZOS → Publish to offload queue
-step: Consume message from offload queue → Execute query → Publish message to python service
-end: Process completed"""
+start: Receive API request
+if: Auth token present?
+yes: Validate token signature
+  if: Token valid?
+  yes: Parse request body
+    if: Body valid?
+    yes: Process business logic
+    yes: Save result to DB
+    yes_end: Return 200 OK
+    no_end: Return 400 Bad Request
+  endif
+  no_end: Return 403 Forbidden
+endif
+no_end: Return 401 Unauthorized
+endif
+end: Done"""
+
+
 
 def render():
     # ── Sidebar ───────────────────────────────────────────────────────────────
@@ -38,7 +55,7 @@ Nest another `if:` inside a branch freely.
 ---
 """)
         st.markdown("**Shape legend:**")
-        components.html(legend_svg(), height=150)
+        st.markdown(legend_svg(), unsafe_allow_html=True)
 
     # ── Main columns ──────────────────────────────────────────────────────────
     col_in, col_out = st.columns([1, 1.6], gap="large")
@@ -50,7 +67,7 @@ Nest another `if:` inside a branch freely.
             label_visibility="collapsed",
             placeholder="Type your flow steps here…"
         )
-        if st.button("⚡ Generate Flow Diagram", type="primary", use_container_width=True,disabled=True):
+        if st.button("⚡ Generate Flow Diagram", type="primary", use_container_width=True):
             if not flow_input.strip():
                 st.error("❌ Please enter a flow description."); st.stop()
             svg, err = generate_flow_svg(flow_input)
@@ -66,10 +83,10 @@ Nest another `if:` inside a branch freely.
         st.subheader("📊 Flow Diagram")
         if st.session_state.get("flow_svg"):
             svg_content = st.session_state["flow_svg"]
-            components.html(
+            st.markdown(
                 f'<div style="overflow-y:auto;max-height:600px;border-radius:12px;">'
                 f'{svg_content}</div>',
-                height=620, scrolling=True
+                unsafe_allow_html=True
             )
             st.download_button(
                 "⬇️ Download SVG",
