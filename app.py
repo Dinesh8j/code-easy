@@ -23,7 +23,7 @@ h1, h2, h3, h4, h5, h6 = st.columns([2.4, 1, 1, 1, 1, 1])
 
 with h1:
     st.markdown("## 🎯 CodeEasy")
-    st.caption("Generate Scala case classes or Python dataclasses from any JSON sample — instantly")
+    st.caption("Less typing. More shipping.")
 
 _tabs = [
     ("h2", "generator", "🛠 Generator"),
