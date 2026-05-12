@@ -86,7 +86,7 @@ Nest another `if:` inside a branch freely.
             label_visibility="collapsed",
             placeholder="Type your flow steps here…"
         )
-        if st.button("⚡ Generate Flow Diagram", type="primary", use_container_width=True):
+        if st.button("⚡ Generate Flow Diagram", type="primary", use_container_width=True,disabled=True):
             if not flow_input.strip():
                 st.error("❌ Please enter a flow description."); st.stop()
             svg, err = generate_flow_svg(flow_input)
