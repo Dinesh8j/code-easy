@@ -23,7 +23,4 @@ def render():
     td1, td2, td3 = st.columns(3)
     td1.metric("🛠 Code Generator",     s["today_gen"])
     td2.metric("📄 Template Generator", ts["today_gen"])
-    td3.metric("🔀 Flow Diagram",        fs["today_gen"])
-
-    st.markdown("---")
-    
+    td3.metric("🔀 Flow Diagram",        fs["today_gen"])    
