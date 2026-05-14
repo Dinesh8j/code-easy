@@ -1,15 +1,37 @@
+"""
+core/template_generator.py
+───────────────────────────
+Generates security.xml <jsontemplate> blocks from a JSON sample.
+No Streamlit imports — fully testable in isolation.
+
+Array handling rules
+─────────────────────
+  list of dicts      → JSONObject  with template="<TitleKey>"  (existing object-array)
+  list of lists      → JSONObject  with template="OuterArrayTemplate"
+                        + OuterArrayTemplate  (index key → InnerArrayTemplate)
+                        + InnerArrayTemplate  (index key → scalar type)
+  list of scalars    → JSONArray   with index="0-1000" and template="<TitleKey>Array"
+                        + <TitleKey>Array block with index key → scalar type
+"""
+
 import json, re
 
 
-def _infer_xml_type(value) -> tuple[str, int]:
-    """Return (xml_type, max_len) for a JSON value."""
-    if isinstance(value, dict):   return "JSONObject", 500
-    if isinstance(value, list):
-        if value and isinstance(value[0], dict): return "JSONArray", 500
-        return "JSONArray", 200
-    if isinstance(value, bool):   return "Boolean", 10
-    if isinstance(value, int):    return "Long", 20
-    if isinstance(value, float):  return "Double", 20
+# ─────────────────────────────────────────────────────────────────────────────
+# Helpers
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _to_title(name: str) -> str:
+    """snake_case / camelCase → TitleCase."""
+    words = re.split(r'[_\s]+', name)
+    return "".join(w.title() for w in words if w)
+
+
+def _scalar_xml_type(value) -> tuple[str, int]:
+    """Return (xml_type, max_len) for a scalar JSON value."""
+    if isinstance(value, bool):  return "Boolean", 10
+    if isinstance(value, int):   return "Long", 20
+    if isinstance(value, float): return "Double", 20
     if isinstance(value, str):
         if value.startswith("http://") or value.startswith("https://"):
             return "String", 150
@@ -18,53 +40,175 @@ def _infer_xml_type(value) -> tuple[str, int]:
     return "String", 30
 
 
-def _to_title(name: str) -> str:
-    """snake_case / camelCase → TitleCase for nested template names."""
-    words = re.split(r'[_\s]+', name)
-    return "".join(w.title() for w in words if w)
+def _infer_xml_type(value) -> tuple[str, int]:
+    """Return (xml_type, max_len) for any JSON value (top-level field)."""
+    if isinstance(value, dict):  return "JSONObject", 500
+    if isinstance(value, list):  return "JSONObject", 16000   # arrays rendered specially
+    return _scalar_xml_type(value)
 
+
+def _first_scalar(lst: list):
+    """Dig into nested lists to find the first scalar sample."""
+    for item in lst:
+        if isinstance(item, list):
+            result = _first_scalar(item)
+            if result is not None:
+                return result
+        elif not isinstance(item, dict):
+            return item
+    return None
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Core processor
+# ─────────────────────────────────────────────────────────────────────────────
 
 def generate_xml_template(raw_json: str, root_template_name: str) -> str:
     """
     Parse JSON and produce security.xml <jsontemplate> blocks.
-    Nested objects/arrays-of-objects get their own block.
+    Returns the full XML string.
     """
-    data   = json.loads(raw_json)
+    data = json.loads(raw_json)
+    # blocks: ordered list of (tpl_name, list_of_key_dicts)
+    # key_dict keys: name?, type, max_len, template?, index?, array_size?,
+    #                min_len?, is_index_key (bool)
     blocks: list[tuple[str, list[dict]]] = []
 
     def process_object(obj: dict, tpl_name: str):
         fields = []
         for key, value in obj.items():
-            xml_type, max_len = _infer_xml_type(value)
-            entry = {"name": key, "type": xml_type, "max_len": max_len}
+
+            # ── nested object ────────────────────────────────────────────────
             if isinstance(value, dict):
                 nested_name = _to_title(key)
-                entry["template"] = nested_name
+                fields.append({
+                    "name": key, "type": "JSONObject",
+                    "template": nested_name, "max_len": 500,
+                })
                 process_object(value, nested_name)
-            elif isinstance(value, list) and value and isinstance(value[0], dict):
-                nested_name = _to_title(key)
-                entry["template"] = nested_name
-                process_object(value[0], nested_name)
-            fields.append(entry)
+
+            # ── array ────────────────────────────────────────────────────────
+            elif isinstance(value, list):
+                _process_array_field(key, value, fields)
+
+            # ── scalar ───────────────────────────────────────────────────────
+            else:
+                xml_type, max_len = _scalar_xml_type(value)
+                fields.append({"name": key, "type": xml_type, "max_len": max_len})
+
         blocks.append((tpl_name, fields))
+
+    def _process_array_field(key: str, value: list, parent_fields: list):
+        """
+        Determine array subtype and emit the right field entry + child blocks.
+
+        Case A — list of dicts  : existing behaviour
+        Case B — list of lists  : 2-D array → Outer + Inner templates
+        Case C — list of scalars: flat array → index-key template
+        """
+        if not value:
+            # empty array — treat as flat string array
+            _emit_flat_array(key, "String", 30, parent_fields)
+            return
+
+        first = value[0]
+
+        # Case A: list of objects
+        if isinstance(first, dict):
+            nested_name = _to_title(key)
+            parent_fields.append({
+                "name": key, "type": "JSONArray",
+                "template": nested_name, "max_len": 500,
+            })
+            process_object(first, nested_name)
+
+        # Case B: list of lists (2-D / multi-array)
+        elif isinstance(first, list):
+            outer_name = _to_title(key) + "OuterArray"
+            inner_name = _to_title(key) + "InnerArray"
+
+            # field on parent
+            parent_fields.append({
+                "name": key, "type": "JSONObject",
+                "template": outer_name,
+                "array_size": "0-10000", "min_len": 1, "max_len": 16000,
+            })
+
+            # outer template: one index key pointing to inner
+            blocks.append((outer_name, [{
+                "is_index_key": True,
+                "index": "0-100000",
+                "type": "JSONArray",
+                "template": inner_name,
+                "max_len": 15000,
+                "array_size": "0-10000",
+            }]))
+
+            # inner template: one index key with scalar type
+            scalar = _first_scalar(first)
+            s_type, s_max = _scalar_xml_type(scalar) if scalar is not None else ("String", 65)
+            blocks.append((inner_name, [{
+                "is_index_key": True,
+                "index": "0-10000",
+                "type": s_type,
+                "max_len": s_max,
+            }]))
+
+        # Case C: list of scalars
+        else:
+            s_type, s_max = _scalar_xml_type(first)
+            _emit_flat_array(key, s_type, s_max, parent_fields)
+
+    def _emit_flat_array(key: str, s_type: str, s_max: int, parent_fields: list):
+        """Case C — flat scalar array: field + a child template with index key."""
+        array_tpl_name = _to_title(key) + "Array"
+        parent_fields.append({
+            "name": key,
+            "index": "0-1000",
+            "type": "JSONArray",
+            "template": array_tpl_name,
+            "max_len": 200,
+        })
+        blocks.append((array_tpl_name, [{
+            "is_index_key": True,
+            "index": "0-1000",
+            "type": s_type,
+            "max_len": s_max,
+        }]))
 
     process_object(data, root_template_name)
 
+    # ── Render blocks to XML ──────────────────────────────────────────────────
     lines = []
     for idx, (tpl_name, fields) in enumerate(blocks):
         if idx > 0:
             lines.append("")
         lines.append(f'<jsontemplate name="{tpl_name}">')
         for f in fields:
-            if "template" in f:
-                lines.append(
-                    f'    <key name="{f["name"]}" type="{f["type"]}" '
-                    f'template="{f["template"]}" max-len="{f["max_len"]}"/>'
-                )
-            else:
-                lines.append(
-                    f'    <key name="{f["name"]}" type="{f["type"]}" max-len="{f["max_len"]}"/>'
-                )
+            lines.append("    " + _render_key(f))
         lines.append("</jsontemplate>")
 
     return "\n".join(lines)
+
+
+def _render_key(f: dict) -> str:
+    """Render a single <key .../> line from a field dict."""
+    parts = []
+
+    # name vs index
+    if f.get("is_index_key"):
+        parts.append(f'index="{f["index"]}"')
+    else:
+        parts.append(f'name="{f["name"]}"')
+        if "index" in f:           # flat array field has both name and index
+            parts.append(f'index="{f["index"]}"')
+
+    parts.append(f'type="{f["type"]}"')
+
+    if "template"   in f: parts.append(f'template="{f["template"]}"')
+    if "array_size" in f: parts.append(f'array-size="{f["array_size"]}"')
+    if "min_len"    in f: parts.append(f'min-len="{f["min_len"]}"')
+
+    parts.append(f'max-len="{f["max_len"]}"')
+
+    return f'<key {" ".join(parts)}/>'
