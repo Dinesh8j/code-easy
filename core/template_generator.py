@@ -20,7 +20,7 @@ def _scalar_xml_type(value) -> tuple[str, int]:
 
 def _infer_xml_type(value) -> tuple[str, int]:
     if isinstance(value, dict):  return "JSONObject", 500
-    if isinstance(value, list):  return "JSONObject", 16000   # arrays rendered specially
+    if isinstance(value, list):  return "JSONObject", 16000
     return _scalar_xml_type(value)
 
 
