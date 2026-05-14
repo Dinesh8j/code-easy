@@ -36,9 +36,6 @@ def _first_scalar(lst: list):
 
 def generate_xml_template(raw_json: str, root_template_name: str) -> str:
     data = json.loads(raw_json)
-    # blocks: ordered list of (tpl_name, list_of_key_dicts)
-    # key_dict keys: name?, type, max_len, template?, index?, array_size?,
-    #                min_len?, is_index_key (bool)
     blocks: list[tuple[str, list[dict]]] = []
 
     def process_object(obj: dict, tpl_name: str):
