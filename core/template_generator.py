@@ -1,19 +1,3 @@
-"""
-core/template_generator.py
-───────────────────────────
-Generates security.xml <jsontemplate> blocks from a JSON sample.
-No Streamlit imports — fully testable in isolation.
-
-Array handling rules
-─────────────────────
-  list of dicts      → JSONObject  with template="<TitleKey>"  (existing object-array)
-  list of lists      → JSONObject  with template="OuterArrayTemplate"
-                        + OuterArrayTemplate  (index key → InnerArrayTemplate)
-                        + InnerArrayTemplate  (index key → scalar type)
-  list of scalars    → JSONArray   with index="0-1000" and template="<TitleKey>Array"
-                        + <TitleKey>Array block with index key → scalar type
-"""
-
 import json, re
 
 
