@@ -2,13 +2,11 @@ import json, re
 
 
 def _to_title(name: str) -> str:
-    """snake_case / camelCase → TitleCase."""
     words = re.split(r'[_\s]+', name)
     return "".join(w.title() for w in words if w)
 
 
 def _scalar_xml_type(value) -> tuple[str, int]:
-    """Return (xml_type, max_len) for a scalar JSON value."""
     if isinstance(value, bool):  return "Boolean", 10
     if isinstance(value, int):   return "Long", 20
     if isinstance(value, float): return "Double", 20
@@ -21,14 +19,12 @@ def _scalar_xml_type(value) -> tuple[str, int]:
 
 
 def _infer_xml_type(value) -> tuple[str, int]:
-    """Return (xml_type, max_len) for any JSON value (top-level field)."""
     if isinstance(value, dict):  return "JSONObject", 500
     if isinstance(value, list):  return "JSONObject", 16000   # arrays rendered specially
     return _scalar_xml_type(value)
 
 
 def _first_scalar(lst: list):
-    """Dig into nested lists to find the first scalar sample."""
     for item in lst:
         if isinstance(item, list):
             result = _first_scalar(item)
@@ -67,13 +63,6 @@ def generate_xml_template(raw_json: str, root_template_name: str) -> str:
         blocks.append((tpl_name, fields))
 
     def _process_array_field(key: str, value: list, parent_fields: list):
-        """
-        Determine array subtype and emit the right field entry + child blocks.
-
-        Case A — list of dicts  : existing behaviour
-        Case B — list of lists  : 2-D array → Outer + Inner templates
-        Case C — list of scalars: flat array → index-key template
-        """
         if not value:
             _emit_flat_array(key, "String", 30, parent_fields)
             return
@@ -124,7 +113,6 @@ def generate_xml_template(raw_json: str, root_template_name: str) -> str:
             _emit_flat_array(key, s_type, s_max, parent_fields)
 
     def _emit_flat_array(key: str, s_type: str, s_max: int, parent_fields: list):
-        """Case C — flat scalar array: field + a child template with index key."""
         array_tpl_name = _to_title(key) + "Array"
         parent_fields.append({
             "name": key,
@@ -142,7 +130,6 @@ def generate_xml_template(raw_json: str, root_template_name: str) -> str:
 
     process_object(data, root_template_name)
 
-    # ── Render blocks to XML ──────────────────────────────────────────────────
     lines = []
     for idx, (tpl_name, fields) in enumerate(blocks):
         if idx > 0:
@@ -156,15 +143,12 @@ def generate_xml_template(raw_json: str, root_template_name: str) -> str:
 
 
 def _render_key(f: dict) -> str:
-    """Render a single <key .../> line from a field dict."""
     parts = []
-
-    # name vs index
     if f.get("is_index_key"):
         parts.append(f'index="{f["index"]}"')
     else:
         parts.append(f'name="{f["name"]}"')
-        if "index" in f:           # flat array field has both name and index
+        if "index" in f:           
             parts.append(f'index="{f["index"]}"')
 
     parts.append(f'type="{f["type"]}"')
