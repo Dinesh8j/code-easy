@@ -107,7 +107,6 @@ def generate_xml_template(raw_json: str, root_template_name: str) -> str:
                 "max_len": s_max,
             }]))
 
-        # Case C: list of scalars
         else:
             s_type, s_max = _scalar_xml_type(first)
             _emit_flat_array(key, s_type, s_max, parent_fields)
