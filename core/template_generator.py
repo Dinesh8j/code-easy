@@ -1,10 +1,6 @@
 import json, re
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Helpers
-# ─────────────────────────────────────────────────────────────────────────────
-
 def _to_title(name: str) -> str:
     """snake_case / camelCase → TitleCase."""
     words = re.split(r'[_\s]+', name)
@@ -42,16 +38,7 @@ def _first_scalar(lst: list):
             return item
     return None
 
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Core processor
-# ─────────────────────────────────────────────────────────────────────────────
-
 def generate_xml_template(raw_json: str, root_template_name: str) -> str:
-    """
-    Parse JSON and produce security.xml <jsontemplate> blocks.
-    Returns the full XML string.
-    """
     data = json.loads(raw_json)
     # blocks: ordered list of (tpl_name, list_of_key_dicts)
     # key_dict keys: name?, type, max_len, template?, index?, array_size?,
@@ -62,7 +49,6 @@ def generate_xml_template(raw_json: str, root_template_name: str) -> str:
         fields = []
         for key, value in obj.items():
 
-            # ── nested object ────────────────────────────────────────────────
             if isinstance(value, dict):
                 nested_name = _to_title(key)
                 fields.append({
@@ -71,11 +57,9 @@ def generate_xml_template(raw_json: str, root_template_name: str) -> str:
                 })
                 process_object(value, nested_name)
 
-            # ── array ────────────────────────────────────────────────────────
             elif isinstance(value, list):
                 _process_array_field(key, value, fields)
 
-            # ── scalar ───────────────────────────────────────────────────────
             else:
                 xml_type, max_len = _scalar_xml_type(value)
                 fields.append({"name": key, "type": xml_type, "max_len": max_len})
@@ -91,7 +75,6 @@ def generate_xml_template(raw_json: str, root_template_name: str) -> str:
         Case C — list of scalars: flat array → index-key template
         """
         if not value:
-            # empty array — treat as flat string array
             _emit_flat_array(key, "String", 30, parent_fields)
             return
 
@@ -106,19 +89,16 @@ def generate_xml_template(raw_json: str, root_template_name: str) -> str:
             })
             process_object(first, nested_name)
 
-        # Case B: list of lists (2-D / multi-array)
         elif isinstance(first, list):
             outer_name = _to_title(key) + "OuterArray"
             inner_name = _to_title(key) + "InnerArray"
 
-            # field on parent
             parent_fields.append({
                 "name": key, "type": "JSONObject",
                 "template": outer_name,
                 "array_size": "0-10000", "min_len": 1, "max_len": 16000,
             })
 
-            # outer template: one index key pointing to inner
             blocks.append((outer_name, [{
                 "is_index_key": True,
                 "index": "0-100000",
