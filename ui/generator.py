@@ -47,7 +47,7 @@ def render():
         )
 
         st.markdown("---")
-        st.subheader("🔤 Enum Fields (optional)")
+        st.subheader("🔤 Enum Ftypeields (optional)")
         st.caption("One per line — `fieldName: VAL1,VAL2`")
         enum_raw = st.text_area(
             "Enums", value="",
@@ -134,7 +134,6 @@ def render():
             except Exception as e:
                 st.error(f"❌ {e}"); st.stop()
 
-    # Output
     with col_out:
         st.subheader("📤 Generated Files")
         if "files" in st.session_state:
