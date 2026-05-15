@@ -38,11 +38,11 @@ def render():
         st.markdown("---")
         root_class = st.text_input(
             "Root class name *", value="",
-            placeholder="e.g. SimilarityCreateRequest  (required)"
+            placeholder="e.g. MyRequest  (required)"
         )
         package_name = (
             st.text_input("Package name (optional)", value="",
-                          placeholder="e.g. com.zoho.feature")
+                          placeholder="e.g. com.example.myapp")
             if lang == "Scala" else ""
         )
 
@@ -103,6 +103,22 @@ def render():
                 st.error(f"❌ Invalid JSON: {e}"); st.stop()
             if not root_class.strip():
                 st.error("❌ Root class name is required."); st.stop()
+
+            # ── Enum / default cross-validation ───────────────────────────
+            enum_errors = []
+            for field_name, default_val in defaults.items():
+                if field_name in extra_enums:
+                    allowed = extra_enums[field_name]
+                    if default_val not in allowed:
+                        enum_errors.append(
+                            f"**{field_name}**: default value `{default_val}` is not in "
+                            f"allowed enum values `{', '.join(allowed)}`"
+                        )
+            if enum_errors:
+                st.error("❌ Default value conflicts with enum — generation blocked:")
+                for err in enum_errors:
+                    st.markdown(f"- {err}")
+                st.stop()
             try:
                 if lang == "Scala":
                     files = generate_scala(json_input, root_class.strip(),
@@ -145,7 +161,6 @@ def render():
         else:
             st.info("Generated files appear here after you click **Generate**.")
 
-    # Feedback
     with col_fb:
         st.subheader("💬 Feedback")
         fb_cat = st.selectbox(
