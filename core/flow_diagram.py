@@ -1,31 +1,3 @@
-"""
-flow_diagram.py  (v2 — simplified & accurate)
-══════════════════════════════════════════════
-
-SYNTAX  (one statement per line)
-─────────────────────────────────
-  start: <label>              → green start terminal
-  end: <label>                → red end terminal
-  step: <label>               → blue process rectangle
-  if: <question>              → amber decision diamond
-  yes: <label>                → process on the YES branch of the last `if`
-  no: <label>                 → process on the NO  branch of the last `if`
-  yes_end: <label>            → terminal that ends the YES branch
-  no_end: <label>             → terminal that ends the NO  branch
-  endif                       → close the current if-block; flow rejoins trunk
-
-  Blank lines and lines starting with # are ignored.
-  Inline chains: use  →  to split one line into multiple `step` nodes.
-
-WHY THIS IS BETTER
-──────────────────
-  • No indentation guessing — each line has an explicit role keyword.
-  • `endif` makes the rejoin point unambiguous.
-  • Nested `if` blocks are supported (stack-based).
-  • Arrow rendering walks an explicit edge list — no child[0] surprises.
-  • Layout is a single top-down pass with a per-column cursor.
-"""
-
 from __future__ import annotations
 import re, textwrap, html
 from dataclasses import dataclass, field
@@ -57,10 +29,6 @@ COLORS = {
     "yes_end":  ("#ef4444", "#ffffff"),
     "no_end":   ("#ef4444", "#ffffff"),
 }
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Data model
-# ─────────────────────────────────────────────────────────────────────────────
 
 _uid = 0
 def _nid():
@@ -227,10 +195,6 @@ def parse(text: str) -> tuple[list[Node], list[Edge]]:
     return nodes, edges
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Layout
-# ─────────────────────────────────────────────────────────────────────────────
-
 _COL_X = {"main": CX_MAIN, "yes": CX_YES, "no": CX_NO}
 
 def layout(nodes: list[Node], edges: list[Edge]) -> float:
@@ -255,10 +219,6 @@ def layout(nodes: list[Node], edges: list[Edge]) -> float:
 
     return max(cursors.values())
 
-
-# ─────────────────────────────────────────────────────────────────────────────
-# SVG rendering
-# ─────────────────────────────────────────────────────────────────────────────
 
 def _wrap(text: str, max_chars: int = 24) -> list[str]:
     return textwrap.wrap(str(text), max_chars) or [str(text)]
@@ -378,42 +338,6 @@ def generate_flow_svg(prompt_text: str) -> tuple[str, str]:
     except Exception as e:
         import traceback
         return "", f"Diagram error: {e}\n{traceback.format_exc()}"
-
-
-def generate_flow_data(prompt_text: str) -> tuple[dict, str]:
-    """
-    Returns (data_dict, error_message) where data_dict has:
-      nodes: list of node dicts  {nid, label, kind, x, y, w, h}
-      edges: list of edge dicts  {src, dst, label}
-      w: canvas width
-    Used by the interactive draggable canvas in ui/flow.py.
-    """
-    try:
-        nodes, edges = parse(prompt_text)
-        if not nodes:
-            return {}, "No parseable content. Add at least one line."
-        layout(nodes, edges)
-        return {
-            "nodes": [
-                {"nid": n.nid, "label": n.label, "kind": n.kind,
-                 "x": round(n.x, 1), "y": round(n.y, 1),
-                 "w": round(n.w, 1), "h": round(n.h, 1)}
-                for n in nodes if n.w > 10   # skip invisible merge dots
-            ],
-            "edges": [
-                {"src": e.src, "dst": e.dst, "label": e.label}
-                for e in edges
-            ],
-            "W": W,
-        }, ""
-    except Exception as e:
-        import traceback
-        return {}, f"Diagram error: {e}\n{traceback.format_exc()}"
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Sidebar legend
-# ─────────────────────────────────────────────────────────────────────────────
 
 def legend_svg() -> str:
     items = [
