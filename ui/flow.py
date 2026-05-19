@@ -2,7 +2,11 @@ import json
 import streamlit as st
 import streamlit.components.v1 as components
 
-from core.flow_diagram import generate_flow_svg, generate_flow_data, legend_svg
+from core.flow_diagram import generate_flow_svg, legend_svg
+try:
+    from core.flow_diagram import generate_flow_data
+except ImportError:
+    generate_flow_data = None
 from db import log_flow_generate
 
 SAMPLE_FLOW = """\
@@ -415,9 +419,11 @@ Nest another `if:` inside a branch freely.
             if err:
                 st.error(f"❌ {err}"); st.stop()
 
-            data, err2 = generate_flow_data(flow_input)
-            if err2:
-                st.error(f"❌ {err2}"); st.stop()
+            data = None
+            if generate_flow_data:
+                data, err2 = generate_flow_data(flow_input)
+                if err2:
+                    st.error(f"❌ {err2}"); st.stop()
 
             st.session_state["flow_svg"]   = svg
             st.session_state["flow_data"]  = data
@@ -427,16 +433,23 @@ Nest another `if:` inside a branch freely.
 
     with col_out:
         st.subheader("📊 Flow Diagram")
-        if st.session_state.get("flow_data"):
-            data        = st.session_state["flow_data"]
+        if st.session_state.get("flow_svg"):
             svg_content = st.session_state["flow_svg"]
+            data        = st.session_state.get("flow_data")
 
-            # Interactive draggable canvas
-            components.html(
-                _draggable_canvas(data, height=640),
-                height=640,
-                scrolling=False
-            )
+            if data:
+                # Interactive draggable canvas
+                components.html(
+                    _draggable_canvas(data, height=640),
+                    height=640, scrolling=False
+                )
+            else:
+                # Fallback: static SVG (old flow_diagram.py on server)
+                st.markdown(
+                    f'<div style="overflow-y:auto;max-height:620px;border-radius:12px;">'
+                    f'{svg_content}</div>',
+                    unsafe_allow_html=True
+                )
 
             st.download_button(
                 "⬇️ Download SVG",
