@@ -1,3 +1,31 @@
+"""
+flow_diagram.py  (v2 — simplified & accurate)
+══════════════════════════════════════════════
+
+SYNTAX  (one statement per line)
+─────────────────────────────────
+  start: <label>              → green start terminal
+  end: <label>                → red end terminal
+  step: <label>               → blue process rectangle
+  if: <question>              → amber decision diamond
+  yes: <label>                → process on the YES branch of the last `if`
+  no: <label>                 → process on the NO  branch of the last `if`
+  yes_end: <label>            → terminal that ends the YES branch
+  no_end: <label>             → terminal that ends the NO  branch
+  endif                       → close the current if-block; flow rejoins trunk
+
+  Blank lines and lines starting with # are ignored.
+  Inline chains: use  →  to split one line into multiple `step` nodes.
+
+WHY THIS IS BETTER
+──────────────────
+  • No indentation guessing — each line has an explicit role keyword.
+  • `endif` makes the rejoin point unambiguous.
+  • Nested `if` blocks are supported (stack-based).
+  • Arrow rendering walks an explicit edge list — no child[0] surprises.
+  • Layout is a single top-down pass with a per-column cursor.
+"""
+
 from __future__ import annotations
 import re, textwrap, html
 from dataclasses import dataclass, field
