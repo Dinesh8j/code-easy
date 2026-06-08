@@ -52,7 +52,7 @@ with h1:
 
 for col, tab_id, label in zip(
     [h2, h3, h4, h5, h6, h7],
-    ["generator", "template", "flow", "dependency-Impact", "stats", "feedbacks"],
+    ["generator", "template", "flow", "features", "stats", "feedbacks"],
     ["🛠 Generator", "📄 Template", "🔀 Flow", "🔗 Features", "📊 Stats", "💬 Feedbacks"]
 ):
     with col:
