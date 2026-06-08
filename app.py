@@ -1,3 +1,13 @@
+"""
+app.py
+──────
+CodeCast — entry point.
+Handles page config, session state, nav bar, and delegates each tab
+to its dedicated ui/ module.
+
+Run with:  streamlit run app.py
+"""
+
 import streamlit as st
 
 from db import init_db, use_supabase
@@ -6,35 +16,45 @@ import ui.template   as tab_template
 import ui.flow       as tab_flow
 import ui.stats      as tab_stats
 import ui.feedbacks  as tab_feedbacks
+import ui.features   as tab_features
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Page config  (must be first Streamlit call)
+# ─────────────────────────────────────────────────────────────────────────────
 
-st.set_page_config(page_title="CodeEasy", page_icon="🎯", layout="wide")
+st.set_page_config(page_title="CodeCast", page_icon="🎯", layout="wide")
+
+# ─────────────────────────────────────────────────────────────────────────────
+# DB init
+# ─────────────────────────────────────────────────────────────────────────────
 
 if not use_supabase():
     init_db()
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Session defaults
+# ─────────────────────────────────────────────────────────────────────────────
 
 _DEFAULTS = {"language": "Scala", "active_tab": "generator", "flow_svg": ""}
 for k, v in _DEFAULTS.items():
     if k not in st.session_state:
         st.session_state[k] = v
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Header + nav
+# ─────────────────────────────────────────────────────────────────────────────
 
-h1, h2, h3, h4, h5, h6 = st.columns([2.4, 1, 1, 1, 1, 1])
+h1, h2, h3, h4, h5, h6, h7 = st.columns([2.2, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9])
 
 with h1:
-    st.markdown("## 🎯 CodeEasy")
-    st.caption("Less typing. Quick shipping.")
+    st.markdown("## 🎯 CodeCast")
+    st.caption("Your JSON-to-code toolkit — case classes, dataclasses, XML templates and flow diagrams")
 
-_tabs = [
-    ("h2", "generator", "🛠 Generator"),
-    ("h3", "template",  "📄 Template"),
-    ("h4", "flow",      "🔀 Flow Diagram"),
-    ("h5", "stats",     "📊 Stats"),
-    ("h6", "feedbacks", "💬 Feedbacks"),
-]
-
-for col, tab_id, label in zip([h2, h3, h4, h5, h6], ["generator","template","flow","stats","feedbacks"],
-                               ["🛠 Generator","📄 Template","🔀 Flow Diagram","📊 Stats","💬 Feedbacks"]):
+for col, tab_id, label in zip(
+    [h2, h3, h4, h5, h6, h7],
+    ["generator", "template", "flow", "dependency-Impact", "stats", "feedbacks"],
+    ["🛠 Generator", "📄 Template", "🔀 Flow", "🔗 Features", "📊 Stats", "💬 Feedbacks"]
+):
     with col:
         is_active = st.session_state["active_tab"] == tab_id
         if st.button(label, use_container_width=True,
@@ -44,13 +64,22 @@ for col, tab_id, label in zip([h2, h3, h4, h5, h6], ["generator","template","flo
 
 st.markdown("---")
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Tab routing
+# ─────────────────────────────────────────────────────────────────────────────
+
 _active = st.session_state["active_tab"]
 
 if   _active == "generator": tab_generator.render()
 elif _active == "template":  tab_template.render()
 elif _active == "flow":      tab_flow.render()
+elif _active == "features":  tab_features.render()
 elif _active == "stats":     tab_stats.render()
 elif _active == "feedbacks": tab_feedbacks.render()
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Footer
+# ─────────────────────────────────────────────────────────────────────────────
 
 st.markdown("---")
 st.markdown("""
