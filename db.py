@@ -1,4 +1,11 @@
-import os, sqlite3
+"""
+db.py
+─────
+All database operations for CodeCast.
+Auto-detects Supabase (cloud) vs SQLite (local) via st.secrets.
+"""
+
+import os, sqlite3, json
 from datetime import datetime, date
 import streamlit as st
 
@@ -68,6 +75,18 @@ def init_db():
             id         INTEGER PRIMARY KEY AUTOINCREMENT,
             event      TEXT NOT NULL,
             created_at TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS features (
+            id           INTEGER PRIMARY KEY AUTOINCREMENT,
+            name         TEXT NOT NULL UNIQUE,
+            dependencies TEXT NOT NULL DEFAULT '[]',
+            created_at   TEXT NOT NULL,
+            updated_at   TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS dep_status (
+            name       TEXT PRIMARY KEY,
+            is_down    INTEGER NOT NULL DEFAULT 0,
+            marked_at  TEXT
         );
     """)
     con.commit()
@@ -319,7 +338,7 @@ def log_flow_generate():
 
 def get_feedback_passcode() -> str:
     try:    return st.secrets["FEEDBACK_PASSCODE"]
-    except: return os.environ.get("FEEDBACK_PASSCODE", "life@30")
+    except: return os.environ.get("FEEDBACK_PASSCODE", "admin123")
 
 
 def get_flow_stats() -> dict:
@@ -351,3 +370,119 @@ def get_flow_stats() -> dict:
         trend = [dict(r) for r in trend_rows]
         con.close()
     return dict(total_gen=total_gen, today_gen=today_gen, trend=trend)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Features & Dependency tracker
+# ─────────────────────────────────────────────────────────────────────────────
+
+def upsert_feature(name: str, dependencies: list[str]):
+    """Insert or update a feature with its dependency list."""
+    now  = datetime.now().isoformat()
+    deps = json.dumps(sorted(set(dependencies)))
+    if use_supabase():
+        sb  = _supabase()
+        existing = sb.table("features").select("id").eq("name", name).execute().data
+        if existing:
+            sb.table("features").update(
+                {"dependencies": deps, "updated_at": now}
+            ).eq("name", name).execute()
+        else:
+            sb.table("features").insert(
+                {"name": name, "dependencies": deps,
+                 "created_at": now, "updated_at": now}
+            ).execute()
+    else:
+        con = _conn()
+        con.execute("""
+            INSERT INTO features (name, dependencies, created_at, updated_at)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT(name) DO UPDATE SET
+                dependencies = excluded.dependencies,
+                updated_at   = excluded.updated_at
+        """, (name, deps, now, now))
+        con.commit(); con.close()
+
+
+def fetch_all_features() -> list[dict]:
+    """Return all features with dependencies parsed back to list."""
+    if use_supabase():
+        rows = _supabase().table("features").select("*").order("name").execute().data or []
+    else:
+        con  = _conn()
+        rows = [dict(r) for r in
+                con.execute("SELECT * FROM features ORDER BY name").fetchall()]
+        con.close()
+    for r in rows:
+        r["dependencies"] = json.loads(r.get("dependencies") or "[]")
+    return rows
+
+
+def delete_feature(fid: int):
+    if use_supabase():
+        _supabase().table("features").delete().eq("id", fid).execute()
+    else:
+        con = _conn()
+        con.execute("DELETE FROM features WHERE id=?", (fid,))
+        con.commit(); con.close()
+
+
+def fetch_all_dependencies() -> list[str]:
+    """Return sorted unique list of every dependency used across all features."""
+    features = fetch_all_features()
+    deps: set[str] = set()
+    for f in features:
+        deps.update(f["dependencies"])
+    return sorted(deps)
+
+
+# ── Dependency status ──────────────────────────────────────────────────────
+
+def set_dep_status(name: str, is_down: bool):
+    now = datetime.now().isoformat()
+    if use_supabase():
+        sb = _supabase()
+        existing = sb.table("dep_status").select("name").eq("name", name).execute().data
+        if existing:
+            sb.table("dep_status").update(
+                {"is_down": is_down, "marked_at": now}
+            ).eq("name", name).execute()
+        else:
+            sb.table("dep_status").insert(
+                {"name": name, "is_down": is_down, "marked_at": now}
+            ).execute()
+    else:
+        con = _conn()
+        con.execute("""
+            INSERT INTO dep_status (name, is_down, marked_at) VALUES (?, ?, ?)
+            ON CONFLICT(name) DO UPDATE SET
+                is_down   = excluded.is_down,
+                marked_at = excluded.marked_at
+        """, (name, 1 if is_down else 0, now))
+        con.commit(); con.close()
+
+
+def fetch_dep_statuses() -> dict[str, dict]:
+    """Return {dep_name: {is_down, marked_at}} for all tracked deps."""
+    if use_supabase():
+        rows = _supabase().table("dep_status").select("*").execute().data or []
+    else:
+        con  = _conn()
+        rows = [dict(r) for r in con.execute("SELECT * FROM dep_status").fetchall()]
+        con.close()
+    return {r["name"]: {"is_down": bool(r["is_down"]), "marked_at": r.get("marked_at")}
+            for r in rows}
+
+
+def get_impacted_features(down_deps: list[str]) -> list[dict]:
+    """Return features that use at least one of the given down dependencies."""
+    if not down_deps:
+        return []
+    features = fetch_all_features()
+    down_set = set(down_deps)
+    impacted = []
+    for f in features:
+        hit = sorted(set(f["dependencies"]) & down_set)
+        if hit:
+            impacted.append({**f, "affected_deps": hit})
+    return impacted
